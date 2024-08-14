@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "Win64",
+            "includePath": [
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/external/glfw-3.4-win64/include",
+                "${workspaceFolder}/external/glad/include"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "windowsSdkVersion": "10.0.22000.0",
+
+            // Compiler path may need to be modified
+            "compilerPath": "${workspaceFolder}/../_Tools/w64devkit/bin/g++.exe",
+            
+            "cppStandard": "c++11",
+            "intelliSenseMode": "windows-gcc-x64"
+        }
+    ],
+    "version": 4
+}

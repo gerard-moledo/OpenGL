@@ -1,0 +1,9 @@
+{
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "c:\\Users\\gerar\\OneDrive\\Projects_2024\\OpenGL\\builds\\mingw",
+            "binaryPath": "c:\\Users\\gerar\\OneDrive\\Projects_2024\\OpenGL\\builds\\mingw\\program.exe",
+            "binaryArgs": []
+        }
+    ]
+}
