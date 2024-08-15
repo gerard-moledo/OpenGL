@@ -2,6 +2,55 @@
 #include "GLFW/glfw3.h"
 
 #include <cstdio>
+#include <string>
+#include <vector>
+#include <fstream>
+
+void ReadShaderFromFile(std::string& source, std::string file) {
+    source.clear();
+
+    std::ifstream filestream {};
+    filestream.open(file);
+
+    std::string line {};
+    while (std::getline(filestream, line)) {
+        source.append(line + "\n");
+    }
+
+    filestream.close();
+}
+
+GLuint CreateShader(std::string filename) {
+    std::string vertex_source {};
+    std::string fragment_source {};
+
+    ReadShaderFromFile(vertex_source, "assets/" + filename + ".vert");
+    ReadShaderFromFile(fragment_source, "assets/" + filename + ".frag");
+
+    const GLchar* vertex_string = vertex_source.c_str();
+    const GLchar* fragment_string = fragment_source.c_str();
+
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex_shader, 1, &vertex_string, NULL);
+    glCompileShader(vertex_shader);
+
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment_shader, 1, &fragment_string, NULL);
+    glCompileShader(fragment_shader);
+
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vertex_shader);
+    glAttachShader(program, fragment_shader);
+    glLinkProgram(program);
+
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+
+    return program;
+}
+
+constexpr int WINDOW_WIDTH = 800;
+constexpr int WINDOW_HEIGHT = 600;
 
 int main() {
     glfwInit();
@@ -9,7 +58,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "OpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "OpenGL", NULL, NULL);
     if (window == NULL) {
         printf("Failed to create GLFW window\n");
         glfwTerminate();
@@ -25,7 +74,45 @@ int main() {
         return -1;
     }
     
+    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+    GLuint pass_shader = CreateShader("pass");
+
+//  ==========VERTEX DATA CREATION==========
+    constexpr int POSITION_LOCATION = 0;
+    constexpr int VERTEX_SIZE = 4;
+
+    std::vector<float> triangle{
+        0.0f, 0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, 0.0f, 1.0f,
+        0.5f, -0.5f, 0.0f, 1.0f,
+    };
+
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    GLuint array_buffer;
+    glGenBuffers(1, &array_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, array_buffer);
+    glBufferData(GL_ARRAY_BUFFER, triangle.size() * sizeof(float), triangle.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(POSITION_LOCATION, triangle.size() / VERTEX_SIZE, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glEnableVertexAttribArray(POSITION_LOCATION);
+
+    glBindVertexArray(0);
+//  ========================================
+
+    glUseProgram(pass_shader);
+
     while (!glfwWindowShouldClose(window)) {
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glBindVertexArray(vao);
+
+        glDrawArrays(GL_TRIANGLES, 0, triangle.size() / VERTEX_SIZE);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
