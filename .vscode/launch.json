@@ -7,9 +7,9 @@
             "program": "${workspaceFolder}/builds/mingw/program.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/builds/mingw/",
             "environment": [],
-            "externalConsole": false,
+            "externalConsole": true,
             "MIMode": "gdb",
             "miDebuggerPath": "C:\\Users\\gerar\\OneDrive\\Projects_2024\\_Tools\\w64devkit\\bin\\gdb.exe",
             "setupCommands": [
