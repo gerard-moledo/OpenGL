@@ -1,18 +1,73 @@
-INCLUDES = -I./external/glad/include -I./external/glfw-3.4-win64/include
-LIBS = -L./external/glfw-3.4-win64/lib-mingw-w64
+# Compiler flags
+C = g++
 
-LINKER_FLAGS = -lglfw3 -lgdi32 -luser32 -lkernel32
+# Project files
+SRCS = ./src/main.cpp ./external/glad/src/glad.c
+OBJS = $(patsubst ./src/%.cpp, %.o, $(filter %.cpp, $(SRCS))) glad.o
+EXE = program.exe
 
-./builds/mingw/program.exe : ./builds/mingw/main.o ./builds/mingw/glad.o
-	g++ $^ $(LIBS) $(LINKER_FLAGS) -o $@
+# Debug settings
+DBGDIR = ./builds/mingw/debug
+DBGEXE = $(DBGDIR)/$(EXE)
+DBGOBJS = $(addprefix $(DBGDIR)/objs/, $(OBJS))
+DBGFLAGS = -g -DDEBUG
 
-./builds/mingw/main.o : ./src/main.cpp
-	g++ $(INCLUDES) -c $< -o $@
+# Release settings
+RELDIR = ./builds/mingw/release
+RELEXE = $(RELDIR)/$(EXE)
+RELOBJS = $(addprefix $(RELDIR)/objs/, $(OBJS))
+RELFLAGS = -O3 -DNDEBUG
 
-./builds/mingw/glad.o : ./external/glad/src/glad.c
-	g++ $(INCLUDES) -c $< -o $@
+# Search Directories
+INCDIRS = -I./external/glad/include -I./external/glfw-3.4-win64/include
+LIBDIRS = -L./external/glfw-3.4-win64/lib-mingw-w64
+
+# Compiler Flags
+COMPFLAGS = -c $(INCDIRS)
+
+# Linker flags
+LINKFLAGS = $(LIBDIRS) -lglfw3 -lgdi32 -luser32 -lkernel32
+
+.PHONY: all prep clean debug release assets
+
+# Debug Rules
+# ==========================================
+debug: $(DBGEXE)
+
+$(DBGEXE): $(DBGOBJS)
+	$(C) $^ $(DBGFLAGS) $(LINKFLAGS) -o $@
+
+$(DBGDIR)/objs/glad.o: ./external/glad/src/glad.c
+	$(C) $^ $(DBGFLAGS) $(COMPFLAGS) -o $@
+$(DBGDIR)/objs/%.o: ./src/%.cpp
+	$(C) $^ $(DBGFLAGS) $(COMPFLAGS) -o $@
+# ==========================================
+
+# Release Rules
+# ==========================================
+release: $(RELEXE)
+
+$(RELEXE): $(RELOBJS)
+	$(C) $^ $(RELFLAGS) $(LINKFLAGS) -o $@
+
+$(RELDIR)/objs/glad.o: ./external/glad/src/glad.c
+	$(C) $^ $(RELFLAGS) $(COMPFLAGS) -o $@
+$(RELDIR)/objs/%.o: ./src/%.cpp
+	$(C) $^ $(RELFLAGS) $(COMPFLAGS) -o $@
+# ==========================================
 
 clean :
-	rm ./builds/mingw/*.o 
-	
-all : clean ./builds/mingw/program.exe
+	rm -f $(DBGDIR)/objs/*
+	rm -f $(DBGDIR)/program.exe
+	rm -f $(RELDIR)/objs/*
+	rm -f $(RELDIR)/program.exe
+
+prep :
+	mkdir -p $(DBGDIR)/objs
+	mkdir -p $(RELDIR)/objs
+
+assets :
+	cp -r ./assets $(DBGDIR)
+	cp -r ./assets $(RELDIR)
+
+all : clean prep release debug assets
