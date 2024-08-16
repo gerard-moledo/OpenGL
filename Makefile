@@ -30,6 +30,8 @@ LINKFLAGS = $(LIBDIRS) -lglfw3 -lgdi32 -luser32 -lkernel32
 
 .PHONY: all prep clean debug release assets
 
+default: debug release assets
+
 # Debug Rules
 # ==========================================
 debug: $(DBGEXE) assets
