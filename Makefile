@@ -19,7 +19,7 @@ RELOBJS = $(addprefix $(RELDIR)/objs/, $(OBJS))
 RELFLAGS = -O3 -DNDEBUG
 
 # Search Directories
-INCDIRS = -I./external/glad/include -I./external/glfw-3.4-win64/include
+INCDIRS = -I./external/glad/include -I./external/glfw-3.4-win64/include -I./external/glm-1.0.1
 LIBDIRS = -L./external/glfw-3.4-win64/lib-mingw-w64
 
 # Compiler Flags
@@ -32,7 +32,7 @@ LINKFLAGS = $(LIBDIRS) -lglfw3 -lgdi32 -luser32 -lkernel32
 
 # Debug Rules
 # ==========================================
-debug: $(DBGEXE)
+debug: $(DBGEXE) assets
 
 $(DBGEXE): $(DBGOBJS)
 	$(C) $^ $(DBGFLAGS) $(LINKFLAGS) -o $@
@@ -45,7 +45,7 @@ $(DBGDIR)/objs/%.o: ./src/%.cpp
 
 # Release Rules
 # ==========================================
-release: $(RELEXE)
+release: $(RELEXE) assets
 
 $(RELEXE): $(RELOBJS)
 	$(C) $^ $(RELFLAGS) $(LINKFLAGS) -o $@

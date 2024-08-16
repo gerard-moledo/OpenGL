@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/include",
                 "${workspaceFolder}/external/glfw-3.4-win64/include",
-                "${workspaceFolder}/external/glad/include"
+                "${workspaceFolder}/external/glad/include",
+                "${workspaceFolder}/external/glm-1.0.1",
             ],
             "defines": [
                 "_DEBUG",
