@@ -4,10 +4,10 @@
             "name": "Launch Debug",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builds/mingw/program.exe",
+            "program": "${workspaceFolder}/builds/mingw/debug/program.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/builds/mingw/",
+            "cwd": "${workspaceFolder}/builds/mingw/debug/",
             "environment": [],
             "externalConsole": true,
             "MIMode": "gdb",
@@ -24,8 +24,29 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "Run makefile"
-        }
+            "preLaunchTask": "Make debug"
+        },
+        {
+            "name": "Launch Run",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builds/mingw/release/program.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/builds/mingw/release/",
+            "environment": [],
+            "externalConsole": true,
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:\\Users\\gerar\\OneDrive\\Projects_2024\\_Tools\\w64devkit\\bin\\gdb.exe",
+            "setupCommands": [
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Make release"
+        },
     ],
     "version": "2.0.0"
 }
