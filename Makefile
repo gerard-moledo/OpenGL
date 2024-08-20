@@ -19,7 +19,7 @@ RELOBJS = $(addprefix $(RELDIR)/objs/, $(OBJS))
 RELFLAGS = -O3 -DNDEBUG
 
 # Search Directories
-INCDIRS = -I./external/glad/include -I./external/glfw-3.4-win64/include -I./external/glm-1.0.1
+INCDIRS = -I./include -I./external/glad/include -I./external/glfw-3.4-win64/include -I./external/glm-1.0.1
 LIBDIRS = -L./external/glfw-3.4-win64/lib-mingw-w64
 
 # Compiler Flags
@@ -30,7 +30,7 @@ LINKFLAGS = $(LIBDIRS) -lglfw3 -lgdi32 -luser32 -lkernel32
 
 .PHONY: all prep clean debug release assets
 
-default: debug release assets
+default: debug release
 
 # Debug Rules
 # ==========================================
