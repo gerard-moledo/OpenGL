@@ -72,6 +72,19 @@ GLuint CreateShader(std::string filename) {
     return program;
 }
 
+struct Input {
+    bool space_pressed;
+} user_input;
+
+void keyboard_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+        user_input.space_pressed = true;
+    }
+    if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) {
+        user_input.space_pressed = false;
+    }
+}
+
 constexpr int WINDOW_WIDTH = 800;
 constexpr int WINDOW_HEIGHT = 600;
 
@@ -88,6 +101,8 @@ int main() {
         return -1;
     }
     
+    glfwSetKeyCallback(window, keyboard_callback);
+
     glfwMakeContextCurrent(window);
 
     bool gl_loaded = gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
@@ -98,50 +113,93 @@ int main() {
     }
     
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
+    bool is_mode_lines = false;
 
     GLuint pass_shader = CreateShader("pass");
     glUseProgram(pass_shader);
-
-//  ==========VERTEX DATA CREATION==========
     constexpr int POSITION_LOCATION = 0;
-    constexpr int VERTEX_SIZE = 4;
+    constexpr int COLOR_LOCATION = 1;
 
-    std::vector<float> triangle{
-        100.0f, 100.0f, 0.0f, 1.0f,
-        400.0f, 500.0f, 0.0f, 1.0f,
-        700.0f, 100.0f, 0.0f, 1.0f,
+//  ==========VERTEX DATA CREATION - QUAD==========
+    constexpr int VERTEX_SIZE = 5;
+    
+    std::vector<float> quad {
+    //  Pos          Color 
+        0.0f, 0.0f,  1.0f, 0.0f, 0.0f,
+        1.0f, 0.0f,  0.0f, 0.0f, 1.0f,
+        1.0f, 1.0f,  0.0f, 1.0f, 0.0f,
+
+        0.0f, 0.0f,  1.0f, 0.0f, 0.0f,
+        1.0f, 1.0f,  0.0f, 1.0f, 0.0f,
+        0.0f, 1.0f,  1.0f, 1.0f, 0.0f,
     };
 
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+    struct Sprite {
+        glm::vec2 position { 100.0f, 100.0f };
+        glm::vec2 size { 200.0f, 300.0f };
+        
+        GLuint vao;
+        GLuint buffer;
+    } sprite;
 
-    GLuint array_buffer;
-    glGenBuffers(1, &array_buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, array_buffer);
-    glBufferData(GL_ARRAY_BUFFER, triangle.size() * sizeof(float), triangle.data(), GL_STATIC_DRAW);
+    glGenVertexArrays(1, &sprite.vao);
+    glBindVertexArray(sprite.vao);
 
-    glVertexAttribPointer(POSITION_LOCATION, triangle.size() / VERTEX_SIZE, GL_FLOAT, GL_FALSE, VERTEX_SIZE * sizeof(float), nullptr);
+    glGenBuffers(1, &sprite.buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, sprite.buffer);
+    glBufferData(GL_ARRAY_BUFFER, quad.size() * sizeof(float), quad.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(POSITION_LOCATION, 2, GL_FLOAT, GL_FALSE, VERTEX_SIZE * sizeof(float), (void*) 0);
     glEnableVertexAttribArray(POSITION_LOCATION);
+    glVertexAttribPointer(COLOR_LOCATION, 3, GL_FLOAT, GL_FALSE, VERTEX_SIZE * sizeof(float), (void*) (2 * sizeof(float)) );
+    glEnableVertexAttribArray(COLOR_LOCATION);
 
     glBindVertexArray(0);
 //  ========================================
 
-    unsigned int PIXEL_TRANSFORM_LOCATION = glGetUniformLocation(pass_shader, "pixel_transform");
-    glm::mat4 pixel_transform = glm::mat4(1.0f);
-    pixel_transform = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f, 0.0f, -100.0f) * pixel_transform;
-    glUniformMatrix4fv(PIXEL_TRANSFORM_LOCATION, 1, false, glm::value_ptr(pixel_transform));
+    unsigned int WORLD_TRANSFORM_LOCATION = glGetUniformLocation(pass_shader, "world_transform");
+    unsigned int ORTHO_TRANSFORM_LOCATION = glGetUniformLocation(pass_shader, "ortho_transform");
 
+    glm::mat4 ortho_transform = glm::mat4(1.0f);
+    ortho_transform = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f, 0.0f, -100.0f) * ortho_transform;
+    glUniformMatrix4fv(ORTHO_TRANSFORM_LOCATION, 1, GL_FALSE, glm::value_ptr(ortho_transform));
+
+    float prev_t = (float) glfwGetTime();
     while (!glfwWindowShouldClose(window)) {
+        user_input.space_pressed = false;
+        glfwPollEvents();
+
+        float current_t = (float) glfwGetTime();
+        float dt = current_t - prev_t;
+        prev_t = current_t;
+
+        double d_mouse_x, d_mouse_y;
+        glfwGetCursorPos(window, &d_mouse_x, &d_mouse_y);
+
+        sprite.position.x = (float) d_mouse_x - sprite.size.x / 2.0f;
+        sprite.position.y = (float) (WINDOW_HEIGHT - d_mouse_y) - sprite.size.y / 2.0f;
+
+        if (user_input.space_pressed) {
+            is_mode_lines = !is_mode_lines;
+            if (is_mode_lines)  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            else                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+
         glClear(GL_COLOR_BUFFER_BIT);
+        
+        // DRAW QUAD
+        glm::mat4 world_transform = glm::mat4(1.0f);
+        world_transform = glm::translate(world_transform, glm::vec3(sprite.position, 0.0f));
+        world_transform = glm::scale(world_transform, glm::vec3(sprite.size, 1.0f));
+        glUniformMatrix4fv(WORLD_TRANSFORM_LOCATION, 1, GL_FALSE, glm::value_ptr(world_transform));
 
-        glBindVertexArray(vao);
+        glBindVertexArray(sprite.vao);
 
-        glDrawArrays(GL_TRIANGLES, 0, triangle.size() / VERTEX_SIZE);
+        glDrawArrays(GL_TRIANGLES, 0, quad.size() / VERTEX_SIZE);
+        // END QUAD
 
         glfwSwapBuffers(window);
-        glfwPollEvents();
     }
 
     glfwTerminate();
