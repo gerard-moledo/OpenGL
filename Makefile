@@ -2,7 +2,7 @@
 C = g++
 
 # Project files
-SRCS = ./src/main.cpp ./external/glad/src/glad.c
+SRCS = ./src/main.cpp ./src/Renderer.cpp ./include/Renderer.hpp ./external/glad/src/glad.c
 OBJS = $(patsubst ./src/%.cpp, %.o, $(filter %.cpp, $(SRCS))) glad.o
 EXE = program.exe
 

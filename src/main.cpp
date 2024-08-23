@@ -11,69 +11,12 @@
 #include <iostream>
 #include <fstream>
 
-void ReadShaderFromFile(std::string& source, std::string file) {
-    source.clear();
-
-    std::ifstream filestream {};
-    filestream.open(file);
-
-    std::string line {};
-    while (std::getline(filestream, line)) {
-        source.append(line + "\n");
-    }
-
-    filestream.close();
-}
-
-GLuint CreateShader(std::string filename) {
-    std::string vertex_source {};
-    std::string fragment_source {};
-
-    ReadShaderFromFile(vertex_source, "assets/" + filename + ".vert");
-    ReadShaderFromFile(fragment_source, "assets/" + filename + ".frag");
-
-    const GLchar* vertex_string = vertex_source.c_str();
-    const GLchar* fragment_string = fragment_source.c_str();
-
-    int success;
-    char infoLog[512];
-
-    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &vertex_string, NULL);
-    glCompileShader(vertex_shader);
-    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(vertex_shader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, &fragment_string, NULL);
-    glCompileShader(fragment_shader);
-    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(fragment_shader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertex_shader);
-    glAttachShader(program, fragment_shader);
-    glLinkProgram(program);
-    glGetShaderiv(program, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetProgramInfoLog(program, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-    }
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
-
-    return program;
-}
+#include "Renderer.hpp"
 
 struct Input {
     bool space_pressed;
+    bool up_pressed;
+    bool down_pressed;
 } user_input;
 
 void keyboard_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -82,6 +25,12 @@ void keyboard_callback(GLFWwindow* window, int key, int scancode, int action, in
     }
     if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) {
         user_input.space_pressed = false;
+    }
+    if (key == GLFW_KEY_UP && action == GLFW_PRESS) {
+        user_input.up_pressed = true;
+    }
+    if (key == GLFW_KEY_DOWN && action == GLFW_RELEASE) {
+        user_input.down_pressed = true;
     }
 }
 
@@ -102,7 +51,8 @@ int main() {
     }
     
     glfwSetKeyCallback(window, keyboard_callback);
-
+    // TEST THIS
+    // glfwSwapInterval(1);
     glfwMakeContextCurrent(window);
 
     bool gl_loaded = gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
@@ -116,69 +66,145 @@ int main() {
     glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
     bool is_mode_lines = false;
 
-    GLuint pass_shader = CreateShader("pass");
-    glUseProgram(pass_shader);
-    constexpr int POSITION_LOCATION = 0;
-    constexpr int COLOR_LOCATION = 1;
+    Renderer::Create_Shader("pass");
 
 //  ==========VERTEX DATA CREATION - QUAD==========
-    constexpr int VERTEX_SIZE = 5;
-    
-    std::vector<float> quad {
-    //  Pos          Color 
-        0.0f, 0.0f,  1.0f, 0.0f, 0.0f,
-        1.0f, 0.0f,  0.0f, 0.0f, 1.0f,
-        1.0f, 1.0f,  0.0f, 1.0f, 0.0f,
 
-        0.0f, 0.0f,  1.0f, 0.0f, 0.0f,
-        1.0f, 1.0f,  0.0f, 1.0f, 0.0f,
-        0.0f, 1.0f,  1.0f, 1.0f, 0.0f,
+    struct Vertex {
+        glm::vec3 position;
+        glm::vec3 color;
+    };
+
+    struct Buffer_Format {
+        std::vector<float> buffer;
+
+        void fill_buffer(std::vector<Vertex>& vertices) {
+            buffer.resize(vertices.size() * 6);
+            for (int v = 0; v < vertices.size(); ++v) {
+                buffer[v * 6 + 0] = vertices[v].position.x;
+                buffer[v * 6 + 1] = vertices[v].position.y;
+                buffer[v * 6 + 2] = vertices[v].position.z;
+                buffer[v * 6 + 3] = vertices[v].color.r;
+                buffer[v * 6 + 4] = vertices[v].color.g;
+                buffer[v * 6 + 5] = vertices[v].color.b;
+            }
+        }
     };
 
     struct Sprite {
-        glm::vec2 position { 100.0f, 100.0f };
-        glm::vec2 size { 200.0f, 300.0f };
-        
-        GLuint vao;
-        GLuint buffer;
-    } sprite;
+        glm::vec2 position { 0.0f, 0.0f };
+        glm::vec2 size { 5.0f, 5.0f };
+        glm::vec3 color { 1.0f, 0.0f, 1.0f };
 
-    glGenVertexArrays(1, &sprite.vao);
-    glBindVertexArray(sprite.vao);
+        std::vector<float> quad_2_positions {
+            0.0f, 0.0f,   1.0f, 0.0f,   1.0f, 1.0f,
+            0.0f, 0.0f,   1.0f, 1.0f,   0.0f, 1.0f,
+        };
 
-    glGenBuffers(1, &sprite.buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, sprite.buffer);
-    glBufferData(GL_ARRAY_BUFFER, quad.size() * sizeof(float), quad.data(), GL_STATIC_DRAW);
+        std::vector<Vertex> mesh;
+        std::vector<Vertex> transformed_mesh;
+        glm::mat4 transform;
+        Buffer_Format format;
 
-    glVertexAttribPointer(POSITION_LOCATION, 2, GL_FLOAT, GL_FALSE, VERTEX_SIZE * sizeof(float), (void*) 0);
-    glEnableVertexAttribArray(POSITION_LOCATION);
-    glVertexAttribPointer(COLOR_LOCATION, 3, GL_FLOAT, GL_FALSE, VERTEX_SIZE * sizeof(float), (void*) (2 * sizeof(float)) );
-    glEnableVertexAttribArray(COLOR_LOCATION);
+        Sprite() {
+            update_mesh();
+        }
 
-    glBindVertexArray(0);
+        void update_mesh() {
+            mesh.resize(quad_2_positions.size() / 2);
+            for (int p = 0; p < quad_2_positions.size() / 2; ++p) {
+                Vertex vertex;
+                vertex.position = glm::vec3(quad_2_positions[p * 2], quad_2_positions[p * 2 + 1], 0.0f);
+                vertex.color = color;
+                mesh[p] = vertex;
+            }
+        }
+
+        void update_buffer() {
+            transform = glm::mat4(1.0f);
+            transform = glm::translate(transform, glm::vec3(position - size / 2.0f, 0.0f));
+            transform = glm::scale(transform, glm::vec3(size, 1.0f));
+            
+            transformed_mesh.resize(mesh.size());
+            for (int v = 0; v < mesh.size(); ++v) {
+                Vertex vertex;
+                vertex.position = transform * glm::vec4(mesh[v].position, 1.0f);
+                vertex.color = mesh[v].color;
+                transformed_mesh[v] = vertex;
+            }
+            format.fill_buffer(transformed_mesh);
+        }
+    };
+
+    std::vector<Sprite> sprites;
+    constexpr int WIDTH = 86;
+    constexpr int HEIGHT = 64;
+    for (int i = 0; i < WIDTH * HEIGHT; ++i) {
+        Sprite sprite;
+        sprite.position = glm::vec2((i % WIDTH) * 10.0f - (WIDTH - 80) * 5, (i / WIDTH) * 10.0f - (HEIGHT - 60) * 5);
+        sprite.color = glm::vec3(i % 3 / 3.0f, (i % 3 + 1) / 3.0f, (i % 3 + 2) / 3.0f);
+        sprite.update_mesh();
+        sprites.emplace_back(sprite);
+    }
+
+    Renderer::Initialize_VAO("batch", Renderer::shader_map.at("pass"), {3, 3});
+    VAO_Spec& batch_spec = Renderer::vao_spec_map.at("batch");
+    for (Sprite& sprite : sprites) {
+        sprite.update_buffer();
+        batch_spec.stream.insert(batch_spec.stream.end(), sprite.format.buffer.begin(), sprite.format.buffer.end());
+    }
+
 //  ========================================
 
-    unsigned int WORLD_TRANSFORM_LOCATION = glGetUniformLocation(pass_shader, "world_transform");
-    unsigned int ORTHO_TRANSFORM_LOCATION = glGetUniformLocation(pass_shader, "ortho_transform");
+    Renderer::Initialize_VAO("single", Renderer::shader_map.at("pass"), Vertex_Format{ 3, 3 });
+
+    VAO_Spec& single_spec = Renderer::vao_spec_map.at("single");
+    single_spec.stream = std::vector<float> {
+        100.0f, 100.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+        300.0f, 100.0f, 0.0f, 1.0f, 0.0f, 1.0f,
+        300.0f, 300.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+
+        100.0f, 100.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+        300.0f, 300.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+        100.0f, 300.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+    };
+
+    Renderer::Update_VAO_Stream("single");
+
+    glUseProgram(single_spec.shader_program);
+
+    unsigned int ORTHO_TRANSFORM_LOCATION = glGetUniformLocation(Renderer::shader_map.at("pass"), "ortho_transform");
 
     glm::mat4 ortho_transform = glm::mat4(1.0f);
     ortho_transform = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f, 0.0f, -100.0f) * ortho_transform;
     glUniformMatrix4fv(ORTHO_TRANSFORM_LOCATION, 1, GL_FALSE, glm::value_ptr(ortho_transform));
 
+    glUseProgram(0);
+
     float prev_t = (float) glfwGetTime();
+    float frame_t = 0.0f;
+    float frame_rate = 1 / 60.0f;
+    int lag = 1;
     while (!glfwWindowShouldClose(window)) {
         user_input.space_pressed = false;
+        user_input.down_pressed = false;
+        user_input.up_pressed = false;
         glfwPollEvents();
 
+        if (user_input.up_pressed) {
+            ++lag;
+            printf("\nLAG: %d\n\n", lag);
+        }
+        if (user_input.down_pressed) {
+            --lag;
+            printf("\nLAG: %d\n\n", lag);
+        }
         float current_t = (float) glfwGetTime();
         float dt = current_t - prev_t;
         prev_t = current_t;
-
-        double d_mouse_x, d_mouse_y;
-        glfwGetCursorPos(window, &d_mouse_x, &d_mouse_y);
-
-        sprite.position.x = (float) d_mouse_x - sprite.size.x / 2.0f;
-        sprite.position.y = (float) (WINDOW_HEIGHT - d_mouse_y) - sprite.size.y / 2.0f;
+        if (dt > frame_rate * lag && lag > 0)
+            dt = frame_rate * lag;
+        frame_t += dt;
 
         if (user_input.space_pressed) {
             is_mode_lines = !is_mode_lines;
@@ -186,19 +212,37 @@ int main() {
             else                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
 
+        while (frame_t > frame_rate) {
+            frame_t -= frame_rate;
+
+            constexpr int SPEED = 2000;
+
+            auto& stream = Renderer::vao_spec_map.at("batch").stream;
+            auto stream_it = stream.begin();
+            for (Sprite& sprite : sprites) {
+                glm::vec2 position = sprite.position;
+                sprite.position += glm::vec2(1.0f, 1.0f) * 40.0f * (((int) (current_t * SPEED) % SPEED) / (float) SPEED - 0.5f);
+                sprite.size = glm::vec2(1.0f) * 20.0f * -glm::abs(((int) (current_t * SPEED) % SPEED) / (float) SPEED - 0.5f);
+                sprite.update_buffer();
+                stream_it = std::copy(sprite.format.buffer.begin(), sprite.format.buffer.end(), stream_it);
+                sprite.position = position;
+            }
+        }
+
         glClear(GL_COLOR_BUFFER_BIT);
+
+        Renderer::Update_VAO_Stream("batch");
+
+        Renderer::Draw("batch");
         
-        // DRAW QUAD
-        glm::mat4 world_transform = glm::mat4(1.0f);
-        world_transform = glm::translate(world_transform, glm::vec3(sprite.position, 0.0f));
-        world_transform = glm::scale(world_transform, glm::vec3(sprite.size, 1.0f));
-        glUniformMatrix4fv(WORLD_TRANSFORM_LOCATION, 1, GL_FALSE, glm::value_ptr(world_transform));
+        //Renderer::Update_VAO_Stream("single");
+        Renderer::Draw("single");
 
-        glBindVertexArray(sprite.vao);
-
-        glDrawArrays(GL_TRIANGLES, 0, quad.size() / VERTEX_SIZE);
-        // END QUAD
-
+        GLenum e;
+        while((e = glGetError()) != GL_NO_ERROR) {
+            printf("%x", e);
+        }
+        printf("%d\n", (int) (1 / dt));
         glfwSwapBuffers(window);
     }
 
