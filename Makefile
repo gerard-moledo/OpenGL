@@ -2,8 +2,9 @@
 C = g++
 
 # Project files
-SRCS = ./src/main.cpp ./src/Renderer.cpp ./include/Renderer.hpp ./external/glad/src/glad.c
-OBJS = $(patsubst ./src/%.cpp, %.o, $(filter %.cpp, $(SRCS))) glad.o
+FILES = main.cpp Renderer.cpp Sprite.cpp ./external/glad/src/glad.c
+SRCS = $(patsubst %.cpp ./src/%.cpp, $(filter %.cpp, %(FILES)))
+OBJS = $(patsubst %.cpp, %.o, $(filter %.cpp, $(FILES))) glad.o
 EXE = program.exe
 
 # Debug settings

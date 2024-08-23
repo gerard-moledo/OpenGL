@@ -1,17 +1,13 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
-#include "glm/glm.hpp"
-#include "glm/gtc/matrix_transform.hpp"
-#include "glm/gtc/type_ptr.hpp"
-
 #include <cstdio>
 #include <string>
-#include <vector>
 #include <iostream>
 #include <fstream>
 
 #include "Renderer.hpp"
+#include "Sprite.hpp"
 
 struct Input {
     bool space_pressed;
@@ -38,6 +34,9 @@ constexpr int WINDOW_WIDTH = 800;
 constexpr int WINDOW_HEIGHT = 600;
 
 int main() {
+    // ==============================
+    // GLFW Initialize
+    // ==============================
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -51,10 +50,13 @@ int main() {
     }
     
     glfwSetKeyCallback(window, keyboard_callback);
-    // TEST THIS
-    // glfwSwapInterval(1);
+    
     glfwMakeContextCurrent(window);
+    // ===============================
 
+    // ===============================
+    // GL Initialization
+    // ===============================
     bool gl_loaded = gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
     if (!gl_loaded) {
         printf("Failed to initialize GLAD\n");
@@ -65,80 +67,15 @@ int main() {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
     glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
     bool is_mode_lines = false;
-
+    // ===============================
     Renderer::Create_Shader("pass");
 
-//  ==========VERTEX DATA CREATION - QUAD==========
-
-    struct Vertex {
-        glm::vec3 position;
-        glm::vec3 color;
-    };
-
-    struct Buffer_Format {
-        std::vector<float> buffer;
-
-        void fill_buffer(std::vector<Vertex>& vertices) {
-            buffer.resize(vertices.size() * 6);
-            for (int v = 0; v < vertices.size(); ++v) {
-                buffer[v * 6 + 0] = vertices[v].position.x;
-                buffer[v * 6 + 1] = vertices[v].position.y;
-                buffer[v * 6 + 2] = vertices[v].position.z;
-                buffer[v * 6 + 3] = vertices[v].color.r;
-                buffer[v * 6 + 4] = vertices[v].color.g;
-                buffer[v * 6 + 5] = vertices[v].color.b;
-            }
-        }
-    };
-
-    struct Sprite {
-        glm::vec2 position { 0.0f, 0.0f };
-        glm::vec2 size { 5.0f, 5.0f };
-        glm::vec3 color { 1.0f, 0.0f, 1.0f };
-
-        std::vector<float> quad_2_positions {
-            0.0f, 0.0f,   1.0f, 0.0f,   1.0f, 1.0f,
-            0.0f, 0.0f,   1.0f, 1.0f,   0.0f, 1.0f,
-        };
-
-        std::vector<Vertex> mesh;
-        std::vector<Vertex> transformed_mesh;
-        glm::mat4 transform;
-        Buffer_Format format;
-
-        Sprite() {
-            update_mesh();
-        }
-
-        void update_mesh() {
-            mesh.resize(quad_2_positions.size() / 2);
-            for (int p = 0; p < quad_2_positions.size() / 2; ++p) {
-                Vertex vertex;
-                vertex.position = glm::vec3(quad_2_positions[p * 2], quad_2_positions[p * 2 + 1], 0.0f);
-                vertex.color = color;
-                mesh[p] = vertex;
-            }
-        }
-
-        void update_buffer() {
-            transform = glm::mat4(1.0f);
-            transform = glm::translate(transform, glm::vec3(position - size / 2.0f, 0.0f));
-            transform = glm::scale(transform, glm::vec3(size, 1.0f));
-            
-            transformed_mesh.resize(mesh.size());
-            for (int v = 0; v < mesh.size(); ++v) {
-                Vertex vertex;
-                vertex.position = transform * glm::vec4(mesh[v].position, 1.0f);
-                vertex.color = mesh[v].color;
-                transformed_mesh[v] = vertex;
-            }
-            format.fill_buffer(transformed_mesh);
-        }
-    };
-
-    std::vector<Sprite> sprites;
+    // ===============================
+    // Batch Creation
+    // ===============================
     constexpr int WIDTH = 86;
     constexpr int HEIGHT = 64;
+    std::vector<Sprite> sprites;
     for (int i = 0; i < WIDTH * HEIGHT; ++i) {
         Sprite sprite;
         sprite.position = glm::vec2((i % WIDTH) * 10.0f - (WIDTH - 80) * 5, (i / WIDTH) * 10.0f - (HEIGHT - 60) * 5);
@@ -148,14 +85,17 @@ int main() {
     }
 
     Renderer::Initialize_VAO("batch", Renderer::shader_map.at("pass"), {3, 3});
+
     VAO_Spec& batch_spec = Renderer::vao_spec_map.at("batch");
     for (Sprite& sprite : sprites) {
         sprite.update_buffer();
         batch_spec.stream.insert(batch_spec.stream.end(), sprite.format.buffer.begin(), sprite.format.buffer.end());
     }
+    //  ==============================
 
-//  ========================================
-
+    // ===============================
+    // Single Sprite 
+    // ===============================
     Renderer::Initialize_VAO("single", Renderer::shader_map.at("pass"), Vertex_Format{ 3, 3 });
 
     VAO_Spec& single_spec = Renderer::vao_spec_map.at("single");
@@ -170,7 +110,9 @@ int main() {
     };
 
     Renderer::Update_VAO_Stream("single");
+    // ===============================
 
+    // Setup screen-space transform
     glUseProgram(single_spec.shader_program);
 
     unsigned int ORTHO_TRANSFORM_LOCATION = glGetUniformLocation(Renderer::shader_map.at("pass"), "ortho_transform");
@@ -180,25 +122,28 @@ int main() {
     glUniformMatrix4fv(ORTHO_TRANSFORM_LOCATION, 1, GL_FALSE, glm::value_ptr(ortho_transform));
 
     glUseProgram(0);
+    // =============================
 
+    // =============================
+    // GAME LOOP
+    // =============================
     float prev_t = (float) glfwGetTime();
     float frame_t = 0.0f;
     float frame_rate = 1 / 60.0f;
     int lag = 1;
     while (!glfwWindowShouldClose(window)) {
+        // Reset single frame inputs
         user_input.space_pressed = false;
         user_input.down_pressed = false;
         user_input.up_pressed = false;
+
         glfwPollEvents();
 
-        if (user_input.up_pressed) {
-            ++lag;
-            printf("\nLAG: %d\n\n", lag);
-        }
-        if (user_input.down_pressed) {
-            --lag;
-            printf("\nLAG: %d\n\n", lag);
-        }
+        // Test code for modulating lag
+        if (user_input.up_pressed)      printf("\nLAG: %d\n\n", ++lag);
+        if (user_input.down_pressed)    printf("\nLAG: %d\n\n", --lag);
+
+        // Timing
         float current_t = (float) glfwGetTime();
         float dt = current_t - prev_t;
         prev_t = current_t;
@@ -206,12 +151,14 @@ int main() {
             dt = frame_rate * lag;
         frame_t += dt;
 
+        // Toggle wireframes
         if (user_input.space_pressed) {
             is_mode_lines = !is_mode_lines;
             if (is_mode_lines)  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
             else                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
 
+        // Update Loop
         while (frame_t > frame_rate) {
             frame_t -= frame_rate;
 
@@ -229,21 +176,19 @@ int main() {
             }
         }
 
+        // ===============================
+        // RENDERING
+        // ===============================
         glClear(GL_COLOR_BUFFER_BIT);
 
         Renderer::Update_VAO_Stream("batch");
-
         Renderer::Draw("batch");
         
-        //Renderer::Update_VAO_Stream("single");
         Renderer::Draw("single");
 
-        GLenum e;
-        while((e = glGetError()) != GL_NO_ERROR) {
-            printf("%x", e);
-        }
         printf("%d\n", (int) (1 / dt));
         glfwSwapBuffers(window);
+        // ===============================
     }
 
     glfwTerminate();
