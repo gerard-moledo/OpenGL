@@ -35,11 +35,11 @@ namespace Renderer {
 
     void Create_Shader(std::string filename);
 
-    void Initialize_VAO(std::string vao_handle, GLuint shader, Vertex_Format format);
+    VAO_Spec Initialize_VAO(GLuint shader, Vertex_Format format);
 
-    void Update_VAO_Stream(std::string vao_handle);
+    void Update_VAO_Stream(VAO_Spec& spec);
 
-    void Draw(std::string vao_handle);
+    void Draw(VAO_Spec& spec);
 };
 
 #endif

@@ -94,28 +94,29 @@ int main() {
     std::vector<Sprite> sprites;
     for (int i = 0; i < WIDTH * HEIGHT; ++i) {
         Sprite sprite;
+        sprite.vao_spec = Renderer::Initialize_VAO(Renderer::shader_map["pass"], Vertex_Format{3, 3});
         sprite.position = glm::vec2((i % WIDTH) * 10.0f - 20, (i / WIDTH) * 10.0f - 20);
         sprite.color = glm::vec3(i % 3 / 3.0f, (i % 3 + 1) / 3.0f, (i % 3 + 2) / 3.0f);
         sprite.update_mesh();
+        
         sprites.emplace_back(sprite);
     }
 
-    Renderer::Initialize_VAO("batch", Renderer::shader_map["pass"], Vertex_Format{3, 3});
-
-    VAO_Spec& batch_spec = Renderer::vao_spec_map["batch"];
+    VAO_Spec batch_vao_spec = Renderer::Initialize_VAO(Renderer::shader_map["pass"], Vertex_Format{3, 3});
     for (Sprite& sprite : sprites) {
         sprite.update_buffer();
-        batch_spec.stream.insert(batch_spec.stream.end(), sprite.format.buffer.begin(), sprite.format.buffer.end());
+        batch_vao_spec.stream.insert(batch_vao_spec.stream.end(), sprite.format.buffer.begin(), sprite.format.buffer.end());
+        sprite.vao_spec.stream = sprite.format.buffer;
     }
+    
+    Renderer::vao_spec_map.emplace("batch", batch_vao_spec);
     // ===============================
 
     // ===============================
     // Individual Sprites
     // ===============================
-    Renderer::Initialize_VAO("single", Renderer::shader_map["pass"], Vertex_Format{ 3, 3 });
-
-    VAO_Spec& single_spec = Renderer::vao_spec_map["single"];
-    single_spec.stream = std::vector<float> {
+    VAO_Spec single_vao_spec = Renderer::Initialize_VAO(Renderer::shader_map["pass"], Vertex_Format{ 3, 3 });
+    single_vao_spec.stream = std::vector<float> {
         100.0f, 100.0f, 0.0f, 1.0f, 0.0f, 0.0f,
         300.0f, 100.0f, 0.0f, 1.0f, 0.0f, 1.0f,
         300.0f, 300.0f, 0.0f, 1.0f, 1.0f, 0.0f,
@@ -124,16 +125,18 @@ int main() {
         300.0f, 300.0f, 0.0f, 1.0f, 1.0f, 0.0f,
         100.0f, 300.0f, 0.0f, 0.0f, 1.0f, 1.0f,
     };
-    Renderer::Update_VAO_Stream("single");
+
+    Renderer::vao_spec_map.emplace("single", single_vao_spec);
+
+    Renderer::Update_VAO_Stream(single_vao_spec);
     // ===============================
 
     // ===============================
     // Instanced Sprites 
     // =============================== 
-    Renderer::Initialize_VAO("instanced", Renderer::shader_map["instanced"], Vertex_Format{ 3, 3 });
+    VAO_Spec instanced_vao_spec = Renderer::Initialize_VAO(Renderer::shader_map["instanced"], Vertex_Format{ 3, 3 });
 
-    VAO_Spec& instanced_spec = Renderer::vao_spec_map["instanced"];
-    instanced_spec.stream = std::vector<float> {
+    instanced_vao_spec.stream = std::vector<float> {
         -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
         0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f,
         0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f,
@@ -145,25 +148,26 @@ int main() {
     
     constexpr int INSTANCE_WIDTH = 104;
     constexpr int INSTANCE_HEIGHT = 104;
-    instanced_spec.instance_count = INSTANCE_WIDTH * INSTANCE_HEIGHT;
-    for (int i = 0; i < instanced_spec.instance_count; ++i) {
+    instanced_vao_spec.instance_count = INSTANCE_WIDTH * INSTANCE_HEIGHT;
+    for (int i = 0; i < instanced_vao_spec.instance_count; ++i) {
         glm::mat4 world_transform = glm::mat4(1.0f);
         glm::vec3 offset = glm::vec3(   800.0f / INSTANCE_WIDTH * (i % INSTANCE_WIDTH + 0.5f), 
                                         600.0f / INSTANCE_HEIGHT * (i / INSTANCE_WIDTH + 0.5f),
                                         0.0f);
         world_transform = glm::translate(world_transform, offset);
         float* transform_data = glm::value_ptr(world_transform);
-        instanced_spec.instanced_stream.insert( instanced_spec.instanced_stream.begin() + 16 * i,
-                                                transform_data + 0, transform_data + 16);
+        instanced_vao_spec.instanced_stream.insert( instanced_vao_spec.instanced_stream.begin() + 16 * i,
+                                                    transform_data + 0, transform_data + 16);
     }
 
-    Renderer::Update_VAO_Stream("instanced");
+    Renderer::vao_spec_map.emplace("single", instanced_vao_spec);
+    Renderer::Update_VAO_Stream(instanced_vao_spec);
     // =============================== 
 
     // ===============================
     // Setup screen-space transform
     // ===============================
-    glUseProgram(single_spec.shader_program);
+    glUseProgram(single_vao_spec.shader_program);
 
     unsigned int ORTHO_TRANSFORM_LOCATION = glGetUniformLocation(Renderer::shader_map["pass"], "ortho_transform");
     glm::mat4 ortho_transform = glm::mat4(1.0f);
@@ -171,7 +175,7 @@ int main() {
     glUniformMatrix4fv(ORTHO_TRANSFORM_LOCATION, 1, GL_FALSE, glm::value_ptr(ortho_transform));
 
     
-    glUseProgram(instanced_spec.shader_program);
+    glUseProgram(instanced_vao_spec.shader_program);
 
     unsigned int ORTHO_INSTANCE_TRANSFORM_LOCATION = glGetUniformLocation(Renderer::shader_map["instanced"], "ortho_transform");
     ortho_transform = glm::mat4(1.0f);
@@ -225,7 +229,7 @@ int main() {
 
             constexpr int SPEED = 2000;
 
-            auto& stream = Renderer::vao_spec_map["batch"].stream;
+            auto& stream = batch_vao_spec.stream;
             auto stream_it = stream.begin();
             for (Sprite& sprite : sprites) {
                 glm::vec2 position = sprite.position;
@@ -234,6 +238,8 @@ int main() {
                 sprite.update_buffer();
                 stream_it = std::copy(sprite.format.buffer.begin(), sprite.format.buffer.end(), stream_it);
                 sprite.position = position;
+                // Part of individual sprite testing
+                // sprite.vao_spec.stream = sprite.format.buffer;
             }
 
             world_instance_transform = glm::mat4(1.0f);
@@ -249,16 +255,24 @@ int main() {
         
         glUseProgram(Renderer::shader_map["pass"]);
         
-        Renderer::Update_VAO_Stream("batch");
-        Renderer::Draw("batch");
+        // Rendering sprites individually
+        /* Done for testing, will be removed 
+        for (Sprite& sprite : sprites) {
+            Renderer::Update_VAO_Stream(sprite.vao_spec);
+            Renderer::Draw(sprite.vao_spec);
+        }
+        */
+
+        Renderer::Update_VAO_Stream(batch_vao_spec);
+        Renderer::Draw(batch_vao_spec);
         
-        Renderer::Draw("single");
+        Renderer::Draw(single_vao_spec);
 
 
         glUseProgram(Renderer::shader_map["instanced"]);
         
         glUniformMatrix4fv(WORLD_INSTANCE_TRANSFORM_LOCATION, 1, GL_FALSE, glm::value_ptr(world_instance_transform));
-        Renderer::Draw("instanced");
+        Renderer::Draw(instanced_vao_spec);
         
         glUseProgram(0);
 

@@ -1,8 +1,13 @@
+#ifndef SPRITE_HPP
+#define SPRITE_HPP
+
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
 #include <vector>
+
+#include "Renderer.hpp"
 
 struct Vertex {
     glm::vec3 position;
@@ -31,6 +36,8 @@ public:
     glm::mat4 transform;
     Buffer_Format format;
 
+    VAO_Spec vao_spec;
+
     Sprite() {
         update_mesh();
     }
@@ -39,3 +46,5 @@ public:
 
     void update_buffer();
 };
+
+#endif

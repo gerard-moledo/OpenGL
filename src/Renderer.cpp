@@ -72,7 +72,7 @@ void Renderer::Create_Shader(std::string filename) {
     shader_map.emplace(filename, program);
 }
 
-void Renderer::Initialize_VAO(std::string vao_handle, GLuint shader, Vertex_Format format) {
+VAO_Spec Renderer::Initialize_VAO(GLuint shader, Vertex_Format format) {
     VAO_Spec spec;
 
     // Generate vertex objects
@@ -119,15 +119,14 @@ void Renderer::Initialize_VAO(std::string vao_handle, GLuint shader, Vertex_Form
     spec.format = format;
     spec.shader_program = shader;
 
-    vao_spec_map.emplace(vao_handle, spec);
+    return spec;
 }
 
-void Renderer::Update_VAO_Stream(std::string vao_handle) {
-    VAO_Spec& spec = vao_spec_map.at(vao_handle);
+void Renderer::Update_VAO_Stream(VAO_Spec& spec) {
     glBindVertexArray(spec.vao);
 
     glBindBuffer(GL_ARRAY_BUFFER, spec.buffer_object);
-    glBufferData(GL_ARRAY_BUFFER, spec.stream.size() * sizeof(float), spec.stream.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, spec.stream.size() * sizeof(float), spec.stream.data(), GL_DYNAMIC_DRAW);
 
     if (spec.instanced_buffer_object != 0) {
         glBindBuffer(GL_ARRAY_BUFFER, spec.instanced_buffer_object);
@@ -137,9 +136,7 @@ void Renderer::Update_VAO_Stream(std::string vao_handle) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Renderer::Draw(std::string vao_handle) {
-    VAO_Spec& spec = vao_spec_map.at(vao_handle);
-
+void Renderer::Draw(VAO_Spec& spec) {
     glBindVertexArray(spec.vao);
 
     if (spec.instance_count == 0) {
