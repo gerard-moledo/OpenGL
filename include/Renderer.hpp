@@ -7,11 +7,9 @@
 #include <vector>
 #include <map>
 
-
-
 struct Vertex_Format {
-    int position_size;
-    int color_size;
+    int position_size = 0;
+    int color_size = 0;
 
     int get_size() {
         return position_size + color_size;
@@ -19,12 +17,16 @@ struct Vertex_Format {
 };
 
 struct VAO_Spec {
-    GLuint vao;
-    GLuint buffer_object;
-    GLuint shader_program;
+    GLuint vao = 0;
+    GLuint buffer_object = 0;
+    GLuint instanced_buffer_object = 0;
+    GLuint shader_program = 0;
 
     Vertex_Format format;
     std::vector<float> stream;
+    std::vector<float> instanced_stream;
+
+    int instance_count = 0;
 };
 
 namespace Renderer {
