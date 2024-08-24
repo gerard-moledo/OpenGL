@@ -100,9 +100,9 @@ int main() {
         sprites.emplace_back(sprite);
     }
 
-    Renderer::Initialize_VAO("batch", Renderer::shader_map.at("pass"), {3, 3});
+    Renderer::Initialize_VAO("batch", Renderer::shader_map["pass"], Vertex_Format{3, 3});
 
-    VAO_Spec& batch_spec = Renderer::vao_spec_map.at("batch");
+    VAO_Spec& batch_spec = Renderer::vao_spec_map["batch"];
     for (Sprite& sprite : sprites) {
         sprite.update_buffer();
         batch_spec.stream.insert(batch_spec.stream.end(), sprite.format.buffer.begin(), sprite.format.buffer.end());
@@ -112,9 +112,9 @@ int main() {
     // ===============================
     // Individual Sprites
     // ===============================
-    Renderer::Initialize_VAO("single", Renderer::shader_map.at("pass"), Vertex_Format{ 3, 3 });
+    Renderer::Initialize_VAO("single", Renderer::shader_map["pass"], Vertex_Format{ 3, 3 });
 
-    VAO_Spec& single_spec = Renderer::vao_spec_map.at("single");
+    VAO_Spec& single_spec = Renderer::vao_spec_map["single"];
     single_spec.stream = std::vector<float> {
         100.0f, 100.0f, 0.0f, 1.0f, 0.0f, 0.0f,
         300.0f, 100.0f, 0.0f, 1.0f, 0.0f, 1.0f,
@@ -132,7 +132,7 @@ int main() {
     // =============================== 
     Renderer::Initialize_VAO("instanced", Renderer::shader_map["instanced"], Vertex_Format{ 3, 3 });
 
-    VAO_Spec& instanced_spec = Renderer::vao_spec_map.at("instanced");
+    VAO_Spec& instanced_spec = Renderer::vao_spec_map["instanced"];
     instanced_spec.stream = std::vector<float> {
         -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
         0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f,
@@ -165,7 +165,7 @@ int main() {
     // ===============================
     glUseProgram(single_spec.shader_program);
 
-    unsigned int ORTHO_TRANSFORM_LOCATION = glGetUniformLocation(Renderer::shader_map.at("pass"), "ortho_transform");
+    unsigned int ORTHO_TRANSFORM_LOCATION = glGetUniformLocation(Renderer::shader_map["pass"], "ortho_transform");
     glm::mat4 ortho_transform = glm::mat4(1.0f);
     ortho_transform = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f, 0.0f, -100.0f) * ortho_transform;
     glUniformMatrix4fv(ORTHO_TRANSFORM_LOCATION, 1, GL_FALSE, glm::value_ptr(ortho_transform));
@@ -173,7 +173,7 @@ int main() {
     
     glUseProgram(instanced_spec.shader_program);
 
-    unsigned int ORTHO_INSTANCE_TRANSFORM_LOCATION = glGetUniformLocation(Renderer::shader_map.at("instanced"), "ortho_transform");
+    unsigned int ORTHO_INSTANCE_TRANSFORM_LOCATION = glGetUniformLocation(Renderer::shader_map["instanced"], "ortho_transform");
     ortho_transform = glm::mat4(1.0f);
     ortho_transform = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f, 0.0f, -100.0f) * ortho_transform;
     glUniformMatrix4fv(ORTHO_INSTANCE_TRANSFORM_LOCATION, 1, GL_FALSE, glm::value_ptr(ortho_transform));
@@ -225,7 +225,7 @@ int main() {
 
             constexpr int SPEED = 2000;
 
-            auto& stream = Renderer::vao_spec_map.at("batch").stream;
+            auto& stream = Renderer::vao_spec_map["batch"].stream;
             auto stream_it = stream.begin();
             for (Sprite& sprite : sprites) {
                 glm::vec2 position = sprite.position;
