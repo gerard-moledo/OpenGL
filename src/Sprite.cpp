@@ -1,24 +1,18 @@
 #include "Sprite.hpp"
 
-void Buffer_Format::fill_buffer(std::vector<Vertex>& vertices) {
-    buffer.resize(vertices.size() * 6);
-    for (int v = 0; v < vertices.size(); ++v) {
-        buffer[v * 6 + 0] = vertices[v].position.x;
-        buffer[v * 6 + 1] = vertices[v].position.y;
-        buffer[v * 6 + 2] = vertices[v].position.z;
-        buffer[v * 6 + 3] = vertices[v].color.r;
-        buffer[v * 6 + 4] = vertices[v].color.g;
-        buffer[v * 6 + 5] = vertices[v].color.b;
-    }
-}
+#include "Utils.hpp"
+
+// TODO: Counts manually how many vertices are part of buffer definition. Should be changed.
+constexpr int VERTEX_ATTRIBUTE_COUNT = 2;
 
 void Sprite::update_mesh() {
-    mesh.resize(quad_2_positions.size() / 2);
-    for (int p = 0; p < quad_2_positions.size() / 2; ++p) {
-        Vertex vertex;
-        vertex.position = glm::vec3(quad_2_positions[p * 2], quad_2_positions[p * 2 + 1], 0.0f);
-        vertex.color = color;
-        mesh[p] = vertex;
+    Model<glm::vec3> model = Models::quad_3d;
+
+    mesh.resize(model.vertex_count * VERTEX_ATTRIBUTE_COUNT);
+    for (int v = 0; v < model.vertex_count; ++v) {
+        mesh[v * VERTEX_ATTRIBUTE_COUNT] = model.mesh[v];
+
+        mesh[v * VERTEX_ATTRIBUTE_COUNT + 1] = color;
     }
 }
 
@@ -27,12 +21,16 @@ void Sprite::update_buffer() {
     transform = glm::translate(transform, glm::vec3(position - size / 2.0f, 0.0f));
     transform = glm::scale(transform, glm::vec3(size, 1.0f));
     
-    transformed_mesh.resize(mesh.size());
-    for (int v = 0; v < mesh.size(); ++v) {
-        Vertex vertex;
-        vertex.position = transform * glm::vec4(mesh[v].position, 1.0f);
-        vertex.color = mesh[v].color;
-        transformed_mesh[v] = vertex;
+    
+    vao_spec.stream.resize(mesh.size() * vao_spec.format.get_size());
+    for (int v = 0; v < mesh.size() / 2; ++v) {
+        glm::vec4 transformed_mesh = transform * glm::vec4(mesh[v * VERTEX_ATTRIBUTE_COUNT], 1.0f);
+        vao_spec.stream[v * vao_spec.format.get_size() + 0] = transformed_mesh.x;
+        vao_spec.stream[v * vao_spec.format.get_size() + 1] = transformed_mesh.y;
+        vao_spec.stream[v * vao_spec.format.get_size() + 2] = transformed_mesh.z;
+
+        vao_spec.stream[v * vao_spec.format.get_size() + 3] = mesh[v * VERTEX_ATTRIBUTE_COUNT + 1].x;
+        vao_spec.stream[v * vao_spec.format.get_size() + 4] = mesh[v * VERTEX_ATTRIBUTE_COUNT + 1].y;
+        vao_spec.stream[v * vao_spec.format.get_size() + 5] = mesh[v * VERTEX_ATTRIBUTE_COUNT + 1].z;
     }
-    format.fill_buffer(transformed_mesh);
 }

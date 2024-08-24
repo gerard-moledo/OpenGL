@@ -105,8 +105,7 @@ int main() {
     VAO_Spec batch_vao_spec = Renderer::Initialize_VAO(Renderer::shader_map["pass"], Vertex_Format{3, 3});
     for (Sprite& sprite : sprites) {
         sprite.update_buffer();
-        batch_vao_spec.stream.insert(batch_vao_spec.stream.end(), sprite.format.buffer.begin(), sprite.format.buffer.end());
-        sprite.vao_spec.stream = sprite.format.buffer;
+        batch_vao_spec.stream.insert(batch_vao_spec.stream.end(), sprite.vao_spec.stream.begin(), sprite.vao_spec.stream.end());
     }
     
     Renderer::vao_spec_map.emplace("batch", batch_vao_spec);
@@ -236,7 +235,7 @@ int main() {
                 sprite.position += glm::vec2(1.0f, 1.0f) * 40.0f * (((int) (current_t * SPEED) % SPEED) / (float) SPEED - 0.5f);
                 sprite.size = glm::vec2(1.0f) * 20.0f * -glm::abs(((int) (current_t * SPEED) % SPEED) / (float) SPEED - 0.5f);
                 sprite.update_buffer();
-                stream_it = std::copy(sprite.format.buffer.begin(), sprite.format.buffer.end(), stream_it);
+                stream_it = std::copy(sprite.vao_spec.stream.begin(), sprite.vao_spec.stream.end(), stream_it);
                 sprite.position = position;
                 // Part of individual sprite testing
                 // sprite.vao_spec.stream = sprite.format.buffer;
