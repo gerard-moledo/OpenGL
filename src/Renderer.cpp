@@ -108,7 +108,7 @@ void Renderer::Initialize_VAO(std::string vao_handle, GLuint shader, Vertex_Form
         for (int i = 0; i < MAT4_SIZE; ++i) {
             glVertexAttribPointer(  offset_location + i, MAT4_SIZE,
                                     GL_FLOAT, GL_FALSE,
-                                    MAT4_SIZE * MAT4_SIZE * sizeof(float), (void*)(i * MAT4_SIZE * MAT4_SIZE));
+                                    MAT4_SIZE * MAT4_SIZE * sizeof(float), (void*)(i * MAT4_SIZE * sizeof(float)));
             glEnableVertexAttribArray(offset_location + i);
             glVertexAttribDivisor(offset_location + i, 1);
         }
