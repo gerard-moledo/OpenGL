@@ -2,7 +2,7 @@
 C = g++
 
 # Project files
-FILES = main.cpp Renderer.cpp Sprite.cpp ./external/glad/src/glad.c
+FILES = main.cpp Renderer.cpp Entity.cpp ./external/glad/src/glad.c
 SRCS = $(patsubst %.cpp ./src/%.cpp, $(filter %.cpp, %(FILES)))
 OBJS = $(patsubst %.cpp, %.o, $(filter %.cpp, $(FILES))) glad.o
 EXE = program.exe
