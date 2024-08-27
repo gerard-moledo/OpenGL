@@ -7,7 +7,7 @@
 #include <fstream>
 
 #include "Renderer.hpp"
-#include "Sprite.hpp"
+#include "Entity.hpp"
 
 // ================================
 // Input Handling
@@ -36,11 +36,12 @@ void keyboard_callback(GLFWwindow* window, int key, int scancode, int action, in
 
 // GL Debugging
 void debug_output_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
-      printf("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
-           ( type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : "" ),
-            type, severity, message );
+    printf("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+        ( type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : "" ),
+        type, severity, message );
 }
 // =================================
+
 constexpr int WINDOW_WIDTH = 800;
 constexpr int WINDOW_HEIGHT = 600;
 
@@ -77,115 +78,36 @@ int main() {
     
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(debug_output_callback, (void*) 0);
+    
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
     glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
     bool is_mode_lines = false;
     // ===============================
 
     // Shader Creation
-    Renderer::Create_Shader("pass");
-    Renderer::Create_Shader("instanced");
-
-    // ===============================
-    // Batch Creation
-    // ===============================
-    constexpr int WIDTH = 104;
-    constexpr int HEIGHT = 104;
-    std::vector<Sprite> sprites;
-    for (int i = 0; i < WIDTH * HEIGHT; ++i) {
-        Sprite sprite;
-        sprite.vao_spec = Renderer::Initialize_VAO(Renderer::shader_map["pass"], Vertex_Format{3, 3});
-        sprite.position = glm::vec2((i % WIDTH) * 10.0f - 20, (i / WIDTH) * 10.0f - 20);
-        sprite.color = glm::vec3(i % 3 / 3.0f, (i % 3 + 1) / 3.0f, (i % 3 + 2) / 3.0f);
-        sprite.update_mesh();
-        
-        sprites.emplace_back(sprite);
-    }
-
-    VAO_Spec batch_vao_spec = Renderer::Initialize_VAO(Renderer::shader_map["pass"], Vertex_Format{3, 3});
-    for (Sprite& sprite : sprites) {
-        sprite.update_buffer();
-        batch_vao_spec.stream.insert(batch_vao_spec.stream.end(), sprite.vao_spec.stream.begin(), sprite.vao_spec.stream.end());
-    }
-    
-    Renderer::vao_spec_map.emplace("batch", batch_vao_spec);
-    // ===============================
-
-    // ===============================
-    // Individual Sprites
-    // ===============================
-    VAO_Spec single_vao_spec = Renderer::Initialize_VAO(Renderer::shader_map["pass"], Vertex_Format{ 3, 3 });
-    single_vao_spec.stream = std::vector<float> {
-        100.0f, 100.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-        300.0f, 100.0f, 0.0f, 1.0f, 0.0f, 1.0f,
-        300.0f, 300.0f, 0.0f, 1.0f, 1.0f, 0.0f,
-
-        100.0f, 100.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-        300.0f, 300.0f, 0.0f, 1.0f, 1.0f, 0.0f,
-        100.0f, 300.0f, 0.0f, 0.0f, 1.0f, 1.0f,
-    };
-
-    Renderer::vao_spec_map.emplace("single", single_vao_spec);
-
-    Renderer::Update_VAO_Stream(single_vao_spec);
-    // ===============================
-
-    // ===============================
-    // Instanced Sprites 
-    // =============================== 
-    VAO_Spec instanced_vao_spec = Renderer::Initialize_VAO(Renderer::shader_map["instanced"], Vertex_Format{ 3, 3 });
-
-    instanced_vao_spec.stream = std::vector<float> {
-        -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f,
-        0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f,
-
-        -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-         0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f,
-        -0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 1.0f,
-    };
-    
-    constexpr int INSTANCE_WIDTH = 104;
-    constexpr int INSTANCE_HEIGHT = 104;
-    instanced_vao_spec.instance_count = INSTANCE_WIDTH * INSTANCE_HEIGHT;
-    for (int i = 0; i < instanced_vao_spec.instance_count; ++i) {
-        glm::mat4 world_transform = glm::mat4(1.0f);
-        glm::vec3 offset = glm::vec3(   800.0f / INSTANCE_WIDTH * (i % INSTANCE_WIDTH + 0.5f), 
-                                        600.0f / INSTANCE_HEIGHT * (i / INSTANCE_WIDTH + 0.5f),
-                                        0.0f);
-        world_transform = glm::translate(world_transform, offset);
-        float* transform_data = glm::value_ptr(world_transform);
-        instanced_vao_spec.instanced_stream.insert( instanced_vao_spec.instanced_stream.begin() + 16 * i,
-                                                    transform_data + 0, transform_data + 16);
-    }
-
-    Renderer::vao_spec_map.emplace("single", instanced_vao_spec);
-    Renderer::Update_VAO_Stream(instanced_vao_spec);
-    // =============================== 
+    Renderer::Create_Shader("color");
+    //Renderer::Create_Shader("sprite");
 
     // ===============================
     // Setup screen-space transform
     // ===============================
-    glUseProgram(single_vao_spec.shader_program);
+    glUseProgram(Renderer::shader_map["color"]);
 
-    unsigned int ORTHO_TRANSFORM_LOCATION = glGetUniformLocation(Renderer::shader_map["pass"], "ortho_transform");
+    unsigned int ORTHO_TRANSFORM_LOCATION = glGetUniformLocation(Renderer::shader_map["color"], "ortho_transform");
     glm::mat4 ortho_transform = glm::mat4(1.0f);
     ortho_transform = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f, 0.0f, -100.0f) * ortho_transform;
     glUniformMatrix4fv(ORTHO_TRANSFORM_LOCATION, 1, GL_FALSE, glm::value_ptr(ortho_transform));
 
-    
-    glUseProgram(instanced_vao_spec.shader_program);
-
-    unsigned int ORTHO_INSTANCE_TRANSFORM_LOCATION = glGetUniformLocation(Renderer::shader_map["instanced"], "ortho_transform");
-    ortho_transform = glm::mat4(1.0f);
-    ortho_transform = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f, 0.0f, -100.0f) * ortho_transform;
-    glUniformMatrix4fv(ORTHO_INSTANCE_TRANSFORM_LOCATION, 1, GL_FALSE, glm::value_ptr(ortho_transform));
-
-    unsigned int WORLD_INSTANCE_TRANSFORM_LOCATION = glGetUniformLocation(Renderer::shader_map["instanced"], "world_transform");
-    glm::mat4 world_instance_transform;
-    
     glUseProgram(0);
     // =============================
+
+    // Ideal entity creation code
+    Player player = Player(glm::vec3(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f, 0.0f));
+    // Text dialogue = Text(text);
+    // Solid wall = Solid(shape);
+
+    Renderer::Initialize_VAO("player", Renderer::shader_map["color"], player.sprite.buffer);
+    Renderer::Update_VAO_Buffer("player", player.sprite.buffer);
 
     // =============================
     // GAME LOOP
@@ -209,7 +131,7 @@ int main() {
         // Timing
         float current_t = (float) glfwGetTime();
         float dt = current_t - prev_t;
-        printf("%.3f\n", (float) dt);
+        //printf("%.3f\n", (float) dt);
         prev_t = current_t;
         if (dt > frame_rate * lag && lag > 0)
             dt = frame_rate * lag;
@@ -226,25 +148,6 @@ int main() {
         while (frame_t > frame_rate) {
             frame_t -= frame_rate;
 
-            constexpr int SPEED = 2000;
-
-            auto& stream = batch_vao_spec.stream;
-            auto stream_it = stream.begin();
-            for (Sprite& sprite : sprites) {
-                glm::vec2 position = sprite.position;
-                sprite.position += glm::vec2(1.0f, 1.0f) * 40.0f * (((int) (current_t * SPEED) % SPEED) / (float) SPEED - 0.5f);
-                sprite.size = glm::vec2(1.0f) * 20.0f * -glm::abs(((int) (current_t * SPEED) % SPEED) / (float) SPEED - 0.5f);
-                sprite.update_buffer();
-                stream_it = std::copy(sprite.vao_spec.stream.begin(), sprite.vao_spec.stream.end(), stream_it);
-                sprite.position = position;
-                // Part of individual sprite testing
-                // sprite.vao_spec.stream = sprite.format.buffer;
-            }
-
-            world_instance_transform = glm::mat4(1.0f);
-            world_instance_transform = glm::rotate(world_instance_transform, 0.75f * glm::pi<float>() * fmodf(current_t, 1000.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-            glm::vec2 size = glm::vec2(1.0f) * 10.0f * -glm::abs(((int) (current_t * SPEED) % SPEED) / (float) SPEED - 0.5f);
-            world_instance_transform = glm::scale(world_instance_transform, glm::vec3(size, 1.0f));
         }
 
         // ===============================
@@ -252,28 +155,12 @@ int main() {
         // ===============================
         glClear(GL_COLOR_BUFFER_BIT);
         
-        glUseProgram(Renderer::shader_map["pass"]);
-        
-        // Rendering sprites individually
-        /* Done for testing, will be removed 
-        for (Sprite& sprite : sprites) {
-            Renderer::Update_VAO_Stream(sprite.vao_spec);
-            Renderer::Draw(sprite.vao_spec);
-        }
-        */
+        glUseProgram(Renderer::shader_map["color"]);
 
-        Renderer::Update_VAO_Stream(batch_vao_spec);
-        Renderer::Draw(batch_vao_spec);
-        
-        Renderer::Draw(single_vao_spec);
+        Renderer::Draw("player", player.sprite.buffer);
 
-
-        glUseProgram(Renderer::shader_map["instanced"]);
-        
-        glUniformMatrix4fv(WORLD_INSTANCE_TRANSFORM_LOCATION, 1, GL_FALSE, glm::value_ptr(world_instance_transform));
-        Renderer::Draw(instanced_vao_spec);
-        
         glUseProgram(0);
+
 
         glfwSwapBuffers(window);
         // ===============================

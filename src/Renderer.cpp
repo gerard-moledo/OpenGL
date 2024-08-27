@@ -1,11 +1,12 @@
 #include "Renderer.hpp"
 
+#include <map>
 #include <iostream>
 #include <fstream>
 
 namespace Renderer {
     std::map<std::string, GLuint> shader_map;
-    std::map<std::string, VAO_Spec> vao_spec_map;
+    std::map<std::string, GLuint> vao_map;
 }
 
 void ReadShaderFromFile(std::string& source, std::string file) {
@@ -72,78 +73,77 @@ void Renderer::Create_Shader(std::string filename) {
     shader_map.emplace(filename, program);
 }
 
-VAO_Spec Renderer::Initialize_VAO(GLuint shader, Vertex_Format format) {
-    VAO_Spec spec;
+void Renderer::Initialize_VAO(std::string vao_handle, GLuint shader, Vertex_Buffer& buffer_format) {
+    GLuint vao;
+    GLuint& buffer_object = buffer_format.buffer_object;
 
     // Generate vertex objects
-    glGenVertexArrays(1, &spec.vao);
-    glGenBuffers(1, &spec.buffer_object);
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &buffer_object);
 
     // Use VAO to determine vertex attributes
-    glBindVertexArray(spec.vao);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer_object);
 
     // Get the locations of attributes used in this shader
-    // TODO: Figure out way to avoid hardcoding shader locations, or more elegantly handle
-    //       different possible shaders.
     GLint position_location = glGetAttribLocation(shader, "in_position");
     GLint color_location = glGetAttribLocation(shader, "in_color");
+    GLint texcoord_location = glGetAttribLocation(shader, "in_texcoord");
 
-    glBindBuffer(GL_ARRAY_BUFFER, spec.buffer_object);
-    glVertexAttribPointer(  position_location, format.position_size,
-                            GL_FLOAT, GL_FALSE,
-                            format.get_size() * sizeof(float), (void*) 0);
-    glEnableVertexAttribArray(position_location);
-    glVertexAttribPointer(  color_location, format.color_size,
-                            GL_FLOAT, GL_FALSE,
-                            format.get_size() * sizeof(float), (void*)(format.position_size * sizeof(float)));
-    glEnableVertexAttribArray(color_location);
-
-    // Assumes 4x4 matrix instancing
-    // TODO (cont.): Handle different shaders and their attributes more elegantly.
-    if (shader == shader_map["instanced"]) {
-        constexpr int MAT4_SIZE = 4;
-        GLint offset_location = glGetAttribLocation(shader, "in_instance_transform");
-        glGenBuffers(1, &spec.instanced_buffer_object);
-        glBindBuffer(GL_ARRAY_BUFFER, spec.instanced_buffer_object);
-        for (int i = 0; i < MAT4_SIZE; ++i) {
-            glVertexAttribPointer(  offset_location + i, MAT4_SIZE,
-                                    GL_FLOAT, GL_FALSE,
-                                    MAT4_SIZE * MAT4_SIZE * sizeof(float), (void*)(i * MAT4_SIZE * sizeof(float)));
-            glEnableVertexAttribArray(offset_location + i);
-            glVertexAttribDivisor(offset_location + i, 1);
-        }
+    size_t offset = 0;
+    if (position_location >= 0) {
+        glVertexAttribPointer(  position_location, buffer_format.position_size,
+                                GL_FLOAT, GL_FALSE,
+                                buffer_format.get_size() * sizeof(float),
+                                (void*) offset);
+        glEnableVertexAttribArray(position_location);
+        offset += buffer_format.position_size;
+    }
+    if (color_location >= 0) {
+        glVertexAttribPointer(  color_location, buffer_format.color_size,
+                                GL_FLOAT, GL_FALSE,
+                                 buffer_format.get_size() * sizeof(float),
+                                 (void*) offset);
+        glEnableVertexAttribArray(color_location);
+        offset += buffer_format.color_size;
+    }
+    if  (texcoord_location >= 0) {
+        glVertexAttribPointer(  texcoord_location, buffer_format.texcoord_size,
+                                GL_FLOAT, GL_FALSE,
+                                buffer_format.get_size() * sizeof(float),
+                                (void*) offset);
+        glEnableVertexAttribArray(texcoord_location);
+        offset += buffer_format.texcoord_size;
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 
-    spec.format = format;
-    spec.shader_program = shader;
+    vao_map.emplace(vao_handle, vao);
 
-    return spec;
+    return;
 }
 
-void Renderer::Update_VAO_Stream(VAO_Spec& spec) {
-    glBindVertexArray(spec.vao);
+void Renderer::Update_VAO_Buffer(std::string vao_handle, Vertex_Buffer& buffer) {
+    GLuint& vao = vao_map[vao_handle];
+    glBindVertexArray(vao);
 
-    glBindBuffer(GL_ARRAY_BUFFER, spec.buffer_object);
-    glBufferData(GL_ARRAY_BUFFER, spec.stream.size() * sizeof(float), spec.stream.data(), GL_DYNAMIC_DRAW);
-
-    if (spec.instanced_buffer_object != 0) {
-        glBindBuffer(GL_ARRAY_BUFFER, spec.instanced_buffer_object);
-        glBufferData(GL_ARRAY_BUFFER, spec.instanced_stream.size() * sizeof(float), spec.instanced_stream.data(), GL_STATIC_DRAW);
-    }
+    glBindBuffer(GL_ARRAY_BUFFER, buffer.buffer_object);
+    glBufferData(GL_ARRAY_BUFFER, buffer.stream.size() * sizeof(float), buffer.stream.data(), GL_DYNAMIC_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Renderer::Draw(VAO_Spec& spec) {
-    glBindVertexArray(spec.vao);
+void Renderer::Draw(std::string vao_handle, Vertex_Buffer& buffer) {
+    GLuint& vao = vao_map[vao_handle];
 
-    if (spec.instance_count == 0) {
-        glDrawArrays(GL_TRIANGLES, 0, spec.stream.size() / spec.format.get_size());
-    } else {
-        glDrawArraysInstanced(GL_TRIANGLES, 0, spec.stream.size() / spec.format.get_size(), spec.instance_count);
-    }
+    glBindVertexArray(vao);
+
+    int primitive_count = 0;
+    if (buffer.primitive == GL_TRIANGLES)
+        primitive_count = buffer.stream.size() / buffer.get_size();
+
+    glDrawArrays(buffer.primitive, 0, primitive_count);
 
     glBindVertexArray(0);
 }
